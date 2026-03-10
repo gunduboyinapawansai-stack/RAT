@@ -1,43 +1,105 @@
 <!DOCTYPE html>
 <html>
+<head>
+<meta charset="UTF-8">
+<title>RAT Login</title>
+
+<style>
+
+body{
+  font-family: Arial;
+  text-align:center;
+  margin-top:50px;
+}
+
+input{
+  padding:10px;
+  margin:5px;
+  width:200px;
+}
+
+button{
+  padding:10px 20px;
+  font-size:16px;
+  cursor:pointer;
+}
+
+</style>
+
+</head>
 
 <body>
 
 <h2>RAT Login</h2>
 
-<input id="username" placeholder="username"><br><br>
-<input id="password" placeholder="password"><br><br>
+<input id="username" placeholder="Username"><br>
+<input id="password" type="password" placeholder="Password"><br><br>
 
 <button onclick="login()">Login</button>
 
 <script>
 
+const API = "https://rat-1-2vvw.onrender.com";
+
 function login(){
 
-let username=document.getElementById("username").value
-let password=document.getElementById("password").value
+  const username = document.getElementById("username").value.trim();
+  const password = document.getElementById("password").value.trim();
 
-fetch("http://localhost:3000/login",{
-method:"POST",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify({username,password})
-})
-.then(res=>res.json())
-.then(data=>{
+  if(!username || !password){
 
-if(data.success){
+    alert("Please enter both username and password");
+    return;
 
-if(data.role==="admin"){
-window.location="admin.html"
-}else{
-window.location="worker.html"
-}
+  }
 
-}else{
-alert("Login Failed")
-}
+  fetch(API + "/login",{
 
-})
+    method:"POST",
+
+    headers:{
+      "Content-Type":"application/json"
+    },
+
+    body:JSON.stringify({
+      username:username,
+      password:password
+    })
+
+  })
+
+  .then(res => res.json())
+
+  .then(data => {
+
+    if(data.success){
+
+      localStorage.setItem("role", data.role);
+      localStorage.setItem("worker_id", data.worker_id || "");
+      localStorage.setItem("stall_id", data.stall_id || "");
+      localStorage.setItem("username", username);
+
+      if(data.role === "admin"){
+        window.location.href = "admin.html";
+      }else{
+        window.location.href = "worker.html";
+      }
+
+    }else{
+
+      alert("Login Failed: Invalid credentials");
+
+    }
+
+  })
+
+  .catch(err => {
+
+    console.error("Server connection error:",err);
+
+    alert("Unable to connect to server. Please try again later.");
+
+  });
 
 }
 

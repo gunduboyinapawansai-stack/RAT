@@ -1,46 +1,166 @@
-<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-<script>
-const API = "https://rat-backend.onrender.com"; // Render URL
-const socket = io(API); // Connect to Socket.IO
+<!DOCTYPE html>
 
-function loadOrders(){
-  fetch(API + "/orders")
-    .then(res => res.json())
-    .then(data => displayOrders(data));
+<html>
+<head>
+<meta charset="UTF-8">
+<title>RAT Admin Dashboard</title>
+
+<style>
+body{
+  font-family: Arial;
+  text-align:center;
 }
+
+table{
+  margin:20px auto;
+  border-collapse:collapse;
+  width:90%;
+}
+
+th,td{
+  border:1px solid #333;
+  padding:8px;
+  text-align:center;
+}
+
+thead{
+  background:#f2f2f2;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<h2>RAT Admin Dashboard</h2>
+
+<table>
+
+<thead>
+<tr>
+<th>Stall</th>
+<th>Worker</th>
+<th>Items</th>
+<th>Payment</th>
+<th>Time</th>
+</tr>
+</thead>
+
+<tbody id="orders"></tbody>
+
+</table>
+
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
+<script>
+
+const API = "https://rat-1-2vvw.onrender.com";
+const socket = io(API);
+
+
+/* LOAD EXISTING ORDERS */
+
+async function loadOrders(){
+
+  try{
+
+    const res = await fetch(API + "/orders");
+
+    const data = await res.json();
+
+    displayOrders(data);
+
+  }catch(err){
+
+    console.error("Error loading orders:",err);
+
+  }
+
+}
+
+
+/* DISPLAY ORDERS */
 
 function displayOrders(data){
-  let list = document.getElementById("orders");
+
+  const list = document.getElementById("orders");
+
   list.innerHTML = "";
-  data.forEach(o => {
+
+  data.forEach(o=>{
+
     let itemsText = "";
-    for(let item in o.items){
-      itemsText += item + " x" + o.items[item] + ", ";
+
+    const items = o.items || {};
+
+    for(let item in items){
+
+      itemsText += item + " x" + items[item] + ", ";
+
     }
+
     itemsText = itemsText.slice(0,-2);
-    list.innerHTML += `<tr>
+
+    const time = o.created_at
+      ? new Date(o.created_at).toLocaleTimeString()
+      : "-";
+
+    list.innerHTML += `
+    <tr>
+      <td>${o.stall_id || "-"}</td>
+      <td>${o.worker_name || "-"}</td>
       <td>${itemsText}</td>
-      <td>${o.payment || "-"}</td>
-      <td>${o.time || "-"}</td>
-    </tr>`;
+      <td>${o.payment_mode || "-"}</td>
+      <td>${time}</td>
+    </tr>
+    `;
+
   });
+
 }
 
-// Listen for new orders in real-time
-socket.on("newOrder", (order) => {
-  let currentOrders = Array.from(document.querySelectorAll("#orders tr")).map(r => r.innerHTML);
+
+/* REAL TIME ORDER UPDATE */
+
+socket.on("newOrder",(order)=>{
+
+  const list = document.getElementById("orders");
+
   let itemsText = "";
-  for(let item in order.items){
-    itemsText += item + " x" + order.items[item] + ", ";
+
+  const items = order.items || {};
+
+  for(let item in items){
+
+    itemsText += item + " x" + items[item] + ", ";
+
   }
+
   itemsText = itemsText.slice(0,-2);
-  let newRow = `<tr>
+
+  const time = order.time || new Date().toLocaleTimeString();
+
+  const row = `
+  <tr>
+    <td>${order.stall_id || "-"}</td>
+    <td>${order.worker_id || "-"}</td>
     <td>${itemsText}</td>
     <td>${order.payment || "-"}</td>
-    <td>${order.time || "-"}</td>
-  </tr>`;
-  document.getElementById("orders").innerHTML += newRow;
+    <td>${time}</td>
+  </tr>
+  `;
+
+  list.innerHTML += row;
+
 });
 
-loadOrders(); // Load existing orders on page load
+
+/* INITIAL LOAD */
+
+loadOrders();
+
 </script>
+
+</body>
+</html>
