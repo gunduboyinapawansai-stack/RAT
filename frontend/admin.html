@@ -1,118 +1,46 @@
-<!DOCTYPE html>
-<html>
-
-<head>
-<meta charset="UTF-8">
-<title>RAT Admin Dashboard</title>
-
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-
-</head>
-
-<body>
-
-<h2>Admin Dashboard</h2>
-
-<h3>Sales Summary</h3>
-
-<p id="totalOrders">Total Orders: 0</p>
-<p id="cashSales">Cash Sales: ₹0</p>
-<p id="upiSales">UPI Sales: ₹0</p>
-<p id="totalRevenue">Total Revenue: ₹0</p>
-
-<h3>Top Selling Items</h3>
-<ul id="topItems"></ul>
-
-<br>
-
-<table border="1">
-
-<thead>
-<tr>
-<th>Items</th>
-<th>Bill</th>
-<th>Payment</th>
-<th>Time</th>
-</tr>
-</thead>
-
-<tbody id="orders"></tbody>
-
-</table>
-
 <script>
+const API = "https://rat-backend.onrender.com"; // Render URL
+const socket = io(API); // Connect to Socket.IO
 
-const socket = io("http://localhost:3000")
-
-let prices={
-Burger:50,
-Fries:30,
-Hotdog:40
+function loadOrders(){
+  fetch(API + "/orders")
+    .then(res => res.json())
+    .then(data => displayOrders(data));
 }
 
-let cash=0
-let upi=0
-let total=0
-let orderCount=0
-let itemCount={}
-
-socket.on("newOrder",(order)=>{
-
-let list=document.getElementById("orders")
-
-let itemsText=""
-let orderTotal=0
-
-for(let item in order.items){
-
-let qty=order.items[item]
-let price=prices[item]
-
-orderTotal+=qty*price
-
-itemsText+=item+" x"+qty+", "
-
-if(itemCount[item]){
-itemCount[item]+=qty
-}else{
-itemCount[item]=qty
+function displayOrders(data){
+  let list = document.getElementById("orders");
+  list.innerHTML = "";
+  data.forEach(o => {
+    let itemsText = "";
+    for(let item in o.items){
+      itemsText += item + " x" + o.items[item] + ", ";
+    }
+    itemsText = itemsText.slice(0,-2);
+    list.innerHTML += `<tr>
+      <td>${itemsText}</td>
+      <td>${o.payment || "-"}</td>
+      <td>${o.time || "-"}</td>
+    </tr>`;
+  });
 }
 
-}
+// Listen for new orders in real-time
+socket.on("newOrder", (order) => {
+  let currentOrders = Array.from(document.querySelectorAll("#orders tr")).map(r => r.innerHTML);
+  let itemsText = "";
+  for(let item in order.items){
+    itemsText += item + " x" + order.items[item] + ", ";
+  }
+  itemsText = itemsText.slice(0,-2);
+  let newRow = `<tr>
+    <td>${itemsText}</td>
+    <td>${order.payment || "-"}</td>
+    <td>${order.time || "-"}</td>
+  </tr>`;
+  document.getElementById("orders").innerHTML += newRow;
+});
 
-if(order.payment==="Cash"){
-cash+=orderTotal
-}else{
-upi+=orderTotal
-}
-
-total+=orderTotal
-orderCount++
-
-list.innerHTML+=`
-<tr>
-<td>${itemsText}</td>
-<td>₹${orderTotal}</td>
-<td>${order.payment}</td>
-<td>${order.time}</td>
-</tr>
-`
-
-document.getElementById("totalOrders").innerText="Total Orders: "+orderCount
-document.getElementById("cashSales").innerText="Cash Sales: ₹"+cash
-document.getElementById("upiSales").innerText="UPI Sales: ₹"+upi
-document.getElementById("totalRevenue").innerText="Total Revenue: ₹"+total
-
-let topList=document.getElementById("topItems")
-topList.innerHTML=""
-
-for(let item in itemCount){
-topList.innerHTML+=`<li>${item} : ${itemCount[item]} sold</li>`
-}
-
-})
-
+loadOrders(); // Load existing orders on page load
 </script>
-
-</body>
-</html>

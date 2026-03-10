@@ -1,168 +1,102 @@
 <!DOCTYPE html>
 <html>
-
 <head>
-
-<meta charset="UTF-8">
-
 <title>RAT Worker POS</title>
-
 <style>
-
-body{
-font-family: Arial;
-text-align:center;
-}
-
-.menu{
-margin-top:30px;
-}
-
-button{
-padding:10px;
-margin:5px;
-font-size:16px;
-}
-
-#cart{
-margin-top:20px;
-}
-
+body { font-family: Arial; text-align:center; }
+.menu { margin-top:30px; }
+button { padding:10px; margin:5px; font-size:16px; }
+#cart, #receipt { margin-top:20px; text-align:left; display:inline-block; }
+#cart li, #receipt li { margin:5px 0; }
 </style>
-
 </head>
-
 <body>
 
 <h1>RAT Worker POS</h1>
 
 <h3>Select Item</h3>
-
 <div class="menu">
-
 <button onclick="addItem('Burger')">Burger ₹50</button>
 <button onclick="addItem('Fries')">Fries ₹30</button>
 <button onclick="addItem('Hotdog')">Hotdog ₹40</button>
-
 </div>
 
 <h3>Cart</h3>
-
 <ul id="cart"></ul>
-
 <h3 id="total">Total: ₹0</h3>
 
-<br>
-
 <h3>Payment Mode</h3>
-
 <select id="payment">
 <option>Cash</option>
 <option>UPI</option>
 </select>
 
 <br><br>
-
 <button onclick="sendOrder()">Submit Order</button>
 
+<h3>Receipt Preview</h3>
+<ul id="receipt"></ul>
+
 <script>
+const API = "https://rat-backend.onrender.com"; // Render URL
 
-let prices={
-Burger:50,
-Fries:30,
-Hotdog:40
-}
-
-let cart={}
+let prices = { Burger:50, Fries:30, Hotdog:40 };
+let cart = {};
 
 function addItem(item){
-
-if(cart[item]){
-cart[item]++
-}else{
-cart[item]=1
+  if(cart[item]) cart[item]++;
+  else cart[item] = 1;
+  updateCart();
 }
 
-displayCart()
-
+function increase(item){ cart[item]++; updateCart(); }
+function decrease(item){ 
+  cart[item]--; 
+  if(cart[item]==0) delete cart[item]; 
+  updateCart(); 
 }
 
-function increase(item){
+function updateCart(){
+  let list = document.getElementById("cart");
+  let receipt = document.getElementById("receipt");
+  list.innerHTML = "";
+  receipt.innerHTML = "";
+  let total = 0;
 
-cart[item]++
-displayCart()
+  for(let item in cart){
+    let qty = cart[item], price = prices[item];
+    let subtotal = qty * price;
+    total += subtotal;
 
-}
+    // Cart with +/- buttons
+    list.innerHTML += `<li>${item} ₹${price} 
+      <button onclick="decrease('${item}')">-</button> ${qty} 
+      <button onclick="increase('${item}')">+</button></li>`;
 
-function decrease(item){
+    // Receipt preview
+    receipt.innerHTML += `<li>${item} x${qty} = ₹${subtotal}</li>`;
+  }
 
-cart[item]--
-
-if(cart[item]==0){
-delete cart[item]
-}
-
-displayCart()
-
-}
-
-function displayCart(){
-
-let list=document.getElementById("cart")
-list.innerHTML=""
-
-let total=0
-
-for(let item in cart){
-
-let qty=cart[item]
-let price=prices[item]
-
-total+=qty*price
-
-list.innerHTML+=`
-<li>
-${item} ₹${price}
-<button onclick="decrease('${item}')">-</button>
-${qty}
-<button onclick="increase('${item}')">+</button>
-</li>
-`
-
-}
-
-document.getElementById("total").innerText="Total: ₹"+total
-
+  receipt.innerHTML += `<li><strong>Total: ₹${total}</strong></li>`;
+  document.getElementById("total").innerText = "Total: ₹"+total;
 }
 
 function sendOrder(){
+  let payment = document.getElementById("payment").value;
+  let time = new Date().toLocaleTimeString();
 
-let payment=document.getElementById("payment").value
-let time=new Date().toLocaleTimeString()
-
-fetch("http://localhost:3000/order",{
-method:"POST",
-headers:{
-"Content-Type":"application/json"
-},
-body:JSON.stringify({
-items:cart,
-payment:payment,
-time:time
-})
-})
-.then(res=>res.json())
-.then(()=>{
-alert("Order Sent")
-
-cart={}
-displayCart()
-
-})
-
+  fetch(API + "/order", {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({ items: cart, payment: payment, time: time })
+  })
+  .then(res=>res.json())
+  .then(()=> {
+    alert("Order Sent");
+    cart = {};
+    updateCart();
+  });
 }
-
 </script>
-
 </body>
 </html>
